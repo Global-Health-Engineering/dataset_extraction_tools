@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marker-instructor"
+version = "0.1.0"
+description = "Evidence-based document extraction pipeline using Pandoc, Marker, and Instructor"
+authors = [{name = "Author", email = "author@example.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "instructor>=1.0.0",
+    "pydantic>=2.0.0",
+    "pandas>=2.0.0",
+    "pypandoc-binary>=1.15",
+    "marker-pdf[full]>=0.2.0",
+    "typing-extensions",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
