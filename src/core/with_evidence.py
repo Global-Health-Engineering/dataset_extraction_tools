@@ -1,5 +1,5 @@
 """
-Pydantic models for marker-instructor with evidence tracking.
+Pydantic models for dataset_extraction_tools with evidence tracking.
 Defines all data structures for extraction with evidence and confidence scoring.
 """
 

@@ -1,5 +1,5 @@
 """
-Pydantic models for ethord project using marker-instructor.
+Pydantic models for ethord project using dataset_extraction_tools.
 Defines all data structures for extraction with evidence tracking.
 """
 

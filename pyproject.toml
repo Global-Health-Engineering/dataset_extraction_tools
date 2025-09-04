@@ -3,10 +3,10 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "marker-instructor"
+name = "dataset_extraction_tools"
 version = "0.1.0"
-description = "Evidence-based document extraction pipeline using Pandoc, Marker, and Instructor"
-authors = [{name = "Author", email = "author@example.com"}]
+description = "Extract datasets from documents pipeline: Document → Markdown → Structured Data with Evidence"
+authors = [{name = "Nicolo", email = "nmassari@ethz.ch"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.9"

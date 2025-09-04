@@ -1,6 +1,6 @@
-# marker-instructor
+# dataset_extraction_tools
 
-Document extraction pipeline: Document → Markdown → Structured Data with Evidence
+Extract datasets from documents pipeline: Document → Markdown → Structured Data with Evidence
 
 ## Quick Start
 
