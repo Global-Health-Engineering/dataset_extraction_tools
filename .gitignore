@@ -2,7 +2,10 @@
 __pycache__
 *egg*
 build
-venv/
-legacy/
-*ORD files*
-tests/ethord/ORD documents
+venv
+*TODO*
+.claude
+legacy
+*.pdf
+*.docx
+*.md
