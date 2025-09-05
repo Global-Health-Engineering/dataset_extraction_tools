@@ -31,7 +31,11 @@ except ImportError:
 def convert_documents(
     directory: Union[str, Path],
     supported_extensions: Optional[set] = None,
-    skip_existing: bool = True
+    skip_existing: bool = True,
+    use_llm = False,
+    llm_service = "marker.services.openai.OpenAIService",
+    api_key = None,
+    model = None
 ) -> Dict[str, str]:
     """
     Recursively convert all documents in a directory tree to markdown.
@@ -77,7 +81,11 @@ def convert_documents(
         
         try:
             # Convert to markdown
-            markdown_content = convert_document_to_markdown(file_path)
+            markdown_content = convert_document_to_markdown(file_path,
+                                                            use_llm=use_llm, 
+                                                            llm_service=llm_service, 
+                                                            api_key=api_key, 
+                                                            model=model)
             
             # Save markdown in same directory
             markdown_path.write_text(markdown_content, encoding='utf-8')
@@ -302,7 +310,7 @@ if __name__ == "__main__":
     
     elif command == "extract":
         directory = sys.argv[2] if len(sys.argv) > 2 else "."
-        from tests.ethord.ethord_schema import Ethord
+        from tests.ethord.schema import Ethord
         extract_from_markdowns(directory, Ethord)
     
     elif command == "extract-list":
@@ -310,7 +318,7 @@ if __name__ == "__main__":
             print("extract-list requires at least one markdown file")
             sys.exit(1)
         markdown_files = sys.argv[2:]
-        from tests.ethord.ethord_schema import Ethord
+        from tests.ethord.schema import Ethord
         result = extract_from_markdown_list(
             markdown_files, 
             Ethord,
@@ -321,7 +329,7 @@ if __name__ == "__main__":
     
     elif command == "full":
         directory = sys.argv[2] if len(sys.argv) > 2 else "."
-        from tests.ethord.ethord_schema import Ethord
+        from tests.ethord.schema import Ethord
         process_documents_full_pipeline(
             directory, 
             Ethord,

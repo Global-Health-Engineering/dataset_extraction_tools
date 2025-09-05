@@ -10,3 +10,5 @@ legacy
 *.docx
 *.md
 *.json
+!*schema.json
+*.zip

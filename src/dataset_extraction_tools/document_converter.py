@@ -7,7 +7,7 @@ Two-stage processing:
 """
 
 from pathlib import Path
-from typing import Union, Optional, Dict, Any
+from typing import Union
 import logging
 
 try:
@@ -19,12 +19,17 @@ except ImportError:
 try:
     from marker.converters.pdf import PdfConverter
     from marker.models import create_model_dict
+    from marker.config.parser import ConfigParser
     MARKER_AVAILABLE = True
 except ImportError:
     MARKER_AVAILABLE = False
 
 
-def convert_document_to_markdown(file_path: Union[str, Path]) -> str:
+def convert_document_to_markdown(file_path: Union[str, Path],
+                                 use_llm = False,
+                                 llm_service = "marker.services.openai.OpenAIService",
+                                 api_key = None,
+                                 model = None) -> str:
     """
     Convert document to markdown using Pandoc first, Marker fallback.
     
@@ -47,7 +52,12 @@ def convert_document_to_markdown(file_path: Union[str, Path]) -> str:
     
     # PDF and image formats -> Marker
     if file_ext in {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}:
-        return _convert_with_marker(file_path)
+        return _convert_with_marker(file_path, 
+                                    output_format="markdown", 
+                                    use_llm=use_llm, 
+                                    llm_service=llm_service, 
+                                    api_key=api_key, 
+                                    model=model)
     
     # Text formats -> Pandoc first, Marker fallback
     try:
@@ -64,19 +74,38 @@ def _convert_with_pandoc(file_path: Path) -> str:
     
     return pypandoc.convert_file(
         str(file_path),
-        'gfm',
+        'md',
         extra_args=['--wrap=none', '--markdown-headings=atx']
     )
 
 
-def _convert_with_marker(file_path: Path) -> str:
+def _convert_with_marker(file_path: Path,
+                         output_format,
+                         use_llm,
+                         llm_service,
+                         api_key,
+                         model,
+                         ) -> str:
     """Convert using Marker."""
     if not MARKER_AVAILABLE:
         raise RuntimeError("marker-pdf not available. Install with: pip install marker-pdf[full]")
-    
-    # Initialize converter
-    artifact_dict = create_model_dict()
-    converter = PdfConverter(artifact_dict=artifact_dict)
+
+    config = {
+        "output_format": output_format,
+        "use_llm": use_llm,
+        "llm_service": llm_service,
+        "openai_api_key": api_key,
+        "openai_model": model
+    }
+
+    config_parser = ConfigParser(config)
+    converter = PdfConverter(
+        config=config_parser.generate_config_dict(),
+        artifact_dict=create_model_dict(),
+        processor_list=config_parser.get_processors(),
+        renderer=config_parser.get_renderer(),
+        llm_service=config_parser.get_llm_service()
+    )
     
     # Convert document
     rendered = converter(str(file_path))
@@ -85,21 +114,3 @@ def _convert_with_marker(file_path: Path) -> str:
         raise RuntimeError("Marker conversion failed")
     
     return rendered.markdown
-
-
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) != 2:
-        print("Usage: python document_converter.py <file_path>")
-        sys.exit(1)
-    
-    try:
-        markdown = convert_document_to_markdown(sys.argv[1])
-        print("✅ Conversion successful")
-        print(f"📄 Output length: {len(markdown)} characters")
-        print("\n" + "="*50 + " MARKDOWN OUTPUT " + "="*50)
-        print(markdown)
-    except Exception as e:
-        print(f"❌ Conversion failed: {e}")
-        sys.exit(1)
