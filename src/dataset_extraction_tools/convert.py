@@ -24,8 +24,9 @@ try:
 except ImportError:
     MARKER_AVAILABLE = False
 
+_EXTENSIONS_NOT_SUPPORTED_BY_PANDOC = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
-def convert_document_to_markdown(file_path: Union[str, Path],
+def convert_to_markdown(file_path: Union[str, Path],
                                  use_llm = False,
                                  llm_service = "marker.services.openai.OpenAIService",
                                  api_key = None,
@@ -48,10 +49,10 @@ def convert_document_to_markdown(file_path: Union[str, Path],
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
     
-    file_ext = file_path.suffix.lower().lstrip('.')
+    file_ext = file_path.suffix.lower()
     
     # PDF and image formats -> Marker
-    if file_ext in {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}:
+    if file_ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC:
         return _convert_with_marker(file_path, 
                                     output_format="markdown", 
                                     use_llm=use_llm, 
