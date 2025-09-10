@@ -1,6 +1,6 @@
 """
 Dataset Extraction Tools - Simplified API
-Extract datasets from documents: Document � Markdown � Structured Data with Evidence
+Extract datasets from documents: Document -> Markdown -> Structured Data with Evidence
 """
 
 # Core conversion and extraction
