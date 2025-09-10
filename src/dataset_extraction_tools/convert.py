@@ -86,6 +86,7 @@ def _convert_with_marker(file_path: Path,
                          llm_service,
                          api_key,
                          model,
+                         pdftext_workers=4,
                          ) -> str:
     """Convert using Marker."""
     if not MARKER_AVAILABLE:
@@ -96,7 +97,8 @@ def _convert_with_marker(file_path: Path,
         "use_llm": use_llm,
         "llm_service": llm_service,
         "openai_api_key": api_key,
-        "openai_model": model
+        "openai_model": model,
+        "pdftext_workers": pdftext_workers
     }
 
     config_parser = ConfigParser(config)
