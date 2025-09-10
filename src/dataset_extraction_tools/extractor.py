@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Union, Optional, TypeVar, Type, List, Any
 from datetime import date
 from pydantic import BaseModel, Field, create_model
-from .extractor import StringWithEvidence
 
 try:
     import instructor
