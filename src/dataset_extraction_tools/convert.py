@@ -26,11 +26,7 @@ except ImportError:
 
 _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
-def convert_to_markdown(file_path: Union[str, Path],
-                                 use_llm = False,
-                                 llm_service = "marker.services.openai.OpenAIService",
-                                 api_key = None,
-                                 model = None) -> str:
+def convert_to_markdown(file_path: Union[str, Path], **converter_kwargs) -> str:
     """
     Convert document to markdown using Pandoc first, Marker fallback.
     
@@ -53,12 +49,7 @@ def convert_to_markdown(file_path: Union[str, Path],
     
     # PDF and image formats -> Marker
     if file_ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC:
-        return _convert_with_marker(file_path, 
-                                    output_format="markdown", 
-                                    use_llm=use_llm, 
-                                    llm_service=llm_service, 
-                                    api_key=api_key, 
-                                    model=model)
+        return _convert_with_marker(file_path, **converter_kwargs)
     
     # Text formats -> Pandoc first, Marker fallback
     try:
@@ -81,11 +72,11 @@ def _convert_with_pandoc(file_path: Path) -> str:
 
 
 def _convert_with_marker(file_path: Path,
-                         output_format,
-                         use_llm,
-                         llm_service,
-                         api_key,
-                         model,
+                         output_format = "markdown",
+                         use_llm = False,
+                         llm_service = "marker.services.openai.OpenAIService",
+                         api_key = None,
+                         model = None,
                          pdftext_workers=4,
                          ) -> str:
     """Convert using Marker."""
