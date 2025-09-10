@@ -30,7 +30,7 @@ def convert_dir(
 ) -> Dict[str, str]:
     """Convert all documents in directory to markdown."""
     if file_types is None:
-        file_types = _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC.lstrip('.')
+        file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
     
     extensions = {f".{ext}" for ext in file_types}
     files = find_files(directory, extensions)
