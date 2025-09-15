@@ -10,6 +10,13 @@ from .convert import convert_to_markdown, _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC
 from .extractor import extract_from_file, T
 from .utils import timing
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
+
 logger = logging.getLogger(__name__)
 
 
