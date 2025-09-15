@@ -9,6 +9,7 @@ Two-stage processing:
 from pathlib import Path
 from typing import Union
 import logging
+from .utils import timing
 
 try:
     import pypandoc
@@ -26,6 +27,7 @@ except ImportError:
 
 _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
+@timing
 def convert_to_markdown(file_path: Union[str, Path], **converter_kwargs) -> str:
     """
     Convert document to markdown using Pandoc first, Marker fallback.

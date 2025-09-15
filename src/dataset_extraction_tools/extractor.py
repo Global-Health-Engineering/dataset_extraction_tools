@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Union, Optional, TypeVar, Type, List, Any
 from datetime import date
 from pydantic import BaseModel, Field, create_model
+from .utils import timing
 
 try:
     import instructor
@@ -123,6 +124,7 @@ def extract_from_text(
     )
 
 
+@timing
 def extract_from_file(
     file_path: Union[str, Path],
     response_model: Type[T],
