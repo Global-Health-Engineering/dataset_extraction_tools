@@ -56,7 +56,7 @@ def convert_to_markdown(file_path: Union[str, Path], **converter_kwargs) -> str:
         return _convert_with_pandoc(file_path)
     except Exception as e:
         logging.warning(f"Pandoc failed: {e}, trying Marker")
-        return _convert_with_marker(file_path)
+        return _convert_with_marker(file_path, **converter_kwargs)
 
 
 def _convert_with_pandoc(file_path: Path) -> str:
@@ -71,26 +71,18 @@ def _convert_with_pandoc(file_path: Path) -> str:
     )
 
 
-def _convert_with_marker(file_path: Path,
-                         output_format = "markdown",
-                         use_llm = False,
-                         llm_service = "marker.services.openai.OpenAIService",
-                         api_key = None,
-                         model = None,
-                         pdftext_workers=4,
-                         ) -> str:
+def _convert_with_marker(file_path: Path, **kwargs) -> str:
     """Convert using Marker."""
     if not MARKER_AVAILABLE:
         raise RuntimeError("marker-pdf not available. Install with: pip install marker-pdf[full]")
 
-    config = {
-        "output_format": output_format,
-        "use_llm": use_llm,
-        "llm_service": llm_service,
-        "openai_api_key": api_key,
-        "openai_model": model,
-        "pdftext_workers": pdftext_workers
+    # Set defaults
+    defaults = {
+        "output_format": "markdown"
     }
+    
+    # Update with provided kwargs
+    config = {**defaults, **kwargs}
 
     config_parser = ConfigParser(config)
     converter = PdfConverter(
