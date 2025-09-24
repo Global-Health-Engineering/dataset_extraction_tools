@@ -140,39 +140,32 @@ def status_dir(
 @timing
 def clean_dir(
     directory: Union[str, Path],
-    target_extension: str = '.md',
     file_types: Optional[List[str]] = None
 ) -> Dict[str, str]:
-    """Delete target files that correspond to source files with specified extensions.
-    
+    """Delete files with specified extensions.
+
     Args:
         directory: Directory to clean
-        target_extension: Extension of files to delete (e.g., '.md', '.json')
-        file_types: List of file extensions to consider (without dots)
+        file_types: List of file extensions to delete (without dots)
                    If None, uses default conversion extensions
-    
+
     Returns:
-        Dictionary with deletion results for each target file
+        Dictionary with deletion results for each file
     """
     if file_types is None:
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
-    
+
     extensions = {f".{ext}" for ext in file_types}
-    source_files = find_files(directory, extensions)
+    target_files = find_files(directory, extensions)
     results = {}
-    
-    for source_file in source_files:
-        target_path = source_file.with_suffix(target_extension)
-        
-        if target_path.exists():
-            try:
-                target_path.unlink()
-                logger.info(f"Deleted {target_extension} file: {target_path}")
-                results[str(target_path)] = "deleted"
-            except Exception as e:
-                logger.error(f"Error deleting file {target_path}: {str(e)}")
-                results[str(target_path)] = f"error: {str(e)}"
-        else:
-            results[str(target_path)] = "not found"
-    
+
+    for target_file in target_files:
+        try:
+            target_file.unlink()
+            logger.info(f"Deleted file: {target_file}")
+            results[str(target_file)] = "deleted"
+        except Exception as e:
+            logger.error(f"Error deleting file {target_file}: {str(e)}")
+            results[str(target_file)] = f"error: {str(e)}"
+
     return results
