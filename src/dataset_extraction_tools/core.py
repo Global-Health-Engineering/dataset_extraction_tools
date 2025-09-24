@@ -5,10 +5,10 @@ Consolidates all batch operations with unified file discovery and error handling
 
 import logging
 from pathlib import Path
-from typing import Union, Optional, Type, Dict, List, Set
+from typing import Union, Optional, Type, Dict, List
 from .convert import convert_to_markdown, _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC
 from .extractor import extract_from_file, T
-from .utils import timing
+from .utils import timing, find_files
 
 # Configure logging
 logging.basicConfig(
@@ -18,19 +18,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-
-def find_files(directory: Union[str, Path], extensions: Set[str], recursive: bool = True) -> List[Path]:
-    """File discovery in directory given a list of allowed extensions."""
-    directory = Path(directory)
-    if not directory.exists():
-        raise FileNotFoundError(f"Directory not found: {directory}")
-    
-    pattern = "**/*" if recursive else "*"
-    return [
-        f for f in directory.glob(pattern) 
-        if f.is_file() and f.suffix.lower() in extensions
-    ]
 
 
 @timing
@@ -101,18 +88,91 @@ def extract_dir(
 
 
 @timing
-def process_dir(
+def status_dir(
     directory: Union[str, Path],
-    response_model: Type[T],
-    file_types: Optional[List[str]] = None,
-    **kwargs
-) -> tuple[Dict[str, str], Dict[str, str]]:
-    """Full pipeline: convert documents to markdown, then extract structured data."""
-    converter_kwargs = {k: v for k, v in kwargs.items() if k in ['use_llm', 'llm_service', 'api_key', 'model']}
-    extractor_kwargs = {k: v for k, v in kwargs.items() if k in ['provider', 'api_key', 'save_json']}
+    file_types: Optional[List[str]] = None
+) -> Dict[str, int]:
+    """Count total files vs converted markdown files and extracted JSON files in directory.
     
-    conversion_results = convert_dir(directory, file_types, **converter_kwargs)
-    extraction_results = extract_dir(directory, response_model, **extractor_kwargs)
+    Args:
+        directory: Directory to analyze
+        file_types: List of file extensions to consider (without dots)
+                   If None, uses default conversion extensions
     
-    return conversion_results, extraction_results
+    Returns:
+        Dictionary with conversion and extraction statistics
+    """
+    if file_types is None:
+        file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
+    
+    extensions = {f".{ext}" for ext in file_types}
+    total_files = find_files(directory, extensions)
+    markdown_files = find_files(directory, {".md"})
+    
+    converted_count = 0
+    for file_path in total_files:
+        markdown_path = file_path.with_suffix('.md')
+        if markdown_path.exists():
+            converted_count += 1
+    
+    extracted_count = 0
+    for markdown_path in markdown_files:
+        json_path = markdown_path.with_suffix('.json')
+        if json_path.exists():
+            extracted_count += 1
+    
+    stats = {
+        'total_source_files': len(total_files),
+        'converted_to_md': converted_count,
+        'total_md_files': len(markdown_files),
+        'extracted_to_json': extracted_count,
+        '% converted': round(converted_count/len(total_files)*100, 1) if total_files else 0,
+        '% extracted': round(extracted_count/len(markdown_files)*100, 1) if markdown_files else 0
+    }
+    
+    print(f"Directory status for {directory}:")
+    for key, value in stats.items():
+        print(f"  {key}: {value}")
+    
+    return stats
 
+
+@timing
+def clean_dir(
+    directory: Union[str, Path],
+    target_extension: str = '.md',
+    file_types: Optional[List[str]] = None
+) -> Dict[str, str]:
+    """Delete target files that correspond to source files with specified extensions.
+    
+    Args:
+        directory: Directory to clean
+        target_extension: Extension of files to delete (e.g., '.md', '.json')
+        file_types: List of file extensions to consider (without dots)
+                   If None, uses default conversion extensions
+    
+    Returns:
+        Dictionary with deletion results for each target file
+    """
+    if file_types is None:
+        file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
+    
+    extensions = {f".{ext}" for ext in file_types}
+    source_files = find_files(directory, extensions)
+    results = {}
+    
+    for source_file in source_files:
+        target_path = source_file.with_suffix(target_extension)
+        
+        if target_path.exists():
+            try:
+                target_path.unlink()
+                logger.info(f"Deleted {target_extension} file: {target_path}")
+                results[str(target_path)] = "deleted"
+            except Exception as e:
+                logger.error(f"Error deleting file {target_path}: {str(e)}")
+                results[str(target_path)] = f"error: {str(e)}"
+        else:
+            results[str(target_path)] = "not found"
+    
+    return results
