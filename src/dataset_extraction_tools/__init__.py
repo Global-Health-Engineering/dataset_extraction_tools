@@ -5,7 +5,7 @@ Extract datasets from documents: Document -> Markdown -> Structured Data with Ev
 
 # Core conversion and extraction
 from .convert import convert_to_markdown
-from .extractor import (
+from .extract import (
     extract_from_text, extract_from_file, extract_from_files,
     WithEvidence, StringWithEvidence, IntWithEvidence, 
     FloatWithEvidence, DateWithEvidence, EnumWithEvidence

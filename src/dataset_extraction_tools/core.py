@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Union, Optional, Type, Dict, List
 from .convert import convert_to_markdown, _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC
-from .extractor import extract_from_file, T
+from .extract import extract_from_file, T
 from .utils import timing, find_files
 
 # Configure logging
