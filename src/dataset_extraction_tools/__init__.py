@@ -13,8 +13,7 @@ from .extractor import (
 
 # Batch processing
 from .core import (
-    convert_dir, extract_dir, 
-    process_dir
+    convert_dir, extract_dir
 )
 
 __all__ = [
@@ -27,7 +26,6 @@ __all__ = [
     # Batch processing
     "convert_dir",
     "extract_dir", 
-    "process_dir",
     
     # Evidence models
     "WithEvidence",
@@ -35,5 +33,10 @@ __all__ = [
     "IntWithEvidence", 
     "FloatWithEvidence",
     "DateWithEvidence",
-    "EnumWithEvidence"
+    "EnumWithEvidence",
+
+    # Utils
+    "find_files",
+    "status_dir",
+    "clean_dir"
 ]
