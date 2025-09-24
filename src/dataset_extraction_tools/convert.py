@@ -28,12 +28,13 @@ except ImportError:
 _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
 @timing
-def convert_to_markdown(file_path: Union[str, Path], **converter_kwargs) -> str:
+def convert_to_markdown(file_path: Union[str, Path], use_marker: bool = False, **converter_kwargs) -> str:
     """
     Convert document to markdown using Pandoc first, Marker fallback.
     
     Args:
         file_path: Path to document file
+        use_marker: Force usage of Marker instead of Pandoc
         
     Returns:
         Markdown content as string
@@ -48,6 +49,10 @@ def convert_to_markdown(file_path: Union[str, Path], **converter_kwargs) -> str:
         raise FileNotFoundError(f"File not found: {file_path}")
     
     file_ext = file_path.suffix.lower()
+    
+    # Force Marker usage if requested
+    if use_marker:
+        return _convert_with_marker(file_path, **converter_kwargs)
     
     # PDF and image formats -> Marker
     if file_ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC:
