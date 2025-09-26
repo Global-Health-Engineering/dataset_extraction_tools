@@ -25,6 +25,7 @@ def convert_dir(
     directory: Union[str, Path],
     file_types: Optional[List[str]] = None,
     skip_existing: bool = True,
+    path_filter: str = None,
     **converter_kwargs
 ) -> Dict[str, str]:
     """Convert all documents in directory to markdown."""
@@ -32,7 +33,7 @@ def convert_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
     
     extensions = {f".{ext}" for ext in file_types}
-    files = find_files(directory, extensions)
+    files = find_files(directory, extensions, path_filter)
     results = {}
     
     for file_path in files:
@@ -61,10 +62,11 @@ def extract_dir(
     directory: Union[str, Path],
     response_model: Type[T],
     skip_existing: bool = True,
+    path_filter: str = None,
     **extractor_kwargs
 ) -> Dict[str, str]:
     """Extract structured data from all markdown files in directory."""
-    markdown_files = find_files(directory, {".md"})
+    markdown_files = find_files(directory, {".md"}, path_filter)
     results = {}
     
     for markdown_path in markdown_files:
@@ -90,7 +92,8 @@ def extract_dir(
 @timing
 def status_dir(
     directory: Union[str, Path],
-    file_types: Optional[List[str]] = None
+    file_types: Optional[List[str]] = None,
+    path_filter: str = None
 ) -> Dict[str, int]:
     """Count total files vs converted markdown files and extracted JSON files in directory.
     
@@ -106,8 +109,8 @@ def status_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
     
     extensions = {f".{ext}" for ext in file_types}
-    total_files = find_files(directory, extensions)
-    markdown_files = find_files(directory, {".md"})
+    total_files = find_files(directory, extensions, path_filter)
+    markdown_files = find_files(directory, {".md"}, path_filter)
     
     converted_count = 0
     for file_path in total_files:
@@ -140,7 +143,8 @@ def status_dir(
 @timing
 def clean_dir(
     directory: Union[str, Path],
-    file_types: Optional[List[str]] = None
+    file_types: Optional[List[str]] = None,
+    path_filter: str = None
 ) -> Dict[str, str]:
     """Delete files with specified extensions.
 
@@ -156,7 +160,7 @@ def clean_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
 
     extensions = {f".{ext}" for ext in file_types}
-    target_files = find_files(directory, extensions)
+    target_files = find_files(directory, extensions, path_filter)
     results = {}
 
     for target_file in target_files:
