@@ -33,7 +33,7 @@ def convert_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
     
     extensions = {f".{ext}" for ext in file_types}
-    files = find_files(directory, extensions, path_filter)
+    files = find_files(directory, extensions, recursive=True, path_filter=path_filter)
     results = {}
     
     for file_path in files:
@@ -66,7 +66,7 @@ def extract_dir(
     **extractor_kwargs
 ) -> Dict[str, str]:
     """Extract structured data from all markdown files in directory."""
-    markdown_files = find_files(directory, {".md"}, path_filter)
+    markdown_files = find_files(directory, {".md"}, recursive=True, path_filter=path_filter)
     results = {}
     
     for markdown_path in markdown_files:
@@ -109,8 +109,8 @@ def status_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
     
     extensions = {f".{ext}" for ext in file_types}
-    total_files = find_files(directory, extensions, path_filter)
-    markdown_files = find_files(directory, {".md"}, path_filter)
+    total_files = find_files(directory, extensions, recursive=True, path_filter=path_filter)
+    markdown_files = find_files(directory, {".md"}, recursive=True, path_filter=path_filter)
     
     converted_count = 0
     for file_path in total_files:
@@ -160,7 +160,7 @@ def clean_dir(
         file_types = [ext.lstrip('.') for ext in _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC]
 
     extensions = {f".{ext}" for ext in file_types}
-    target_files = find_files(directory, extensions, path_filter)
+    target_files = find_files(directory, extensions, recursive=True, path_filter=path_filter)
     results = {}
 
     for target_file in target_files:
