@@ -20,14 +20,19 @@ def timing(func):
     return wrap
 
 
-def find_files(directory: Union[str, Path], extensions: Set[str], recursive: bool = True) -> List[Path]:
+def find_files(directory: Union[str, Path], extensions: Set[str], recursive: bool = True, path_filter: str = None) -> List[Path]:
     """File discovery in directory given a list of allowed extensions."""
     directory = Path(directory)
     if not directory.exists():
         raise FileNotFoundError(f"Directory not found: {directory}")
-    
+
     pattern = "**/*" if recursive else "*"
-    return [
-        f for f in directory.glob(pattern) 
+    files = [
+        f for f in directory.glob(pattern)
         if f.is_file() and f.suffix.lower() in extensions
     ]
+
+    if path_filter:
+        files = [f for f in files if path_filter.lower() in str(f).lower()]
+
+    return files
