@@ -68,16 +68,16 @@ def extract_dir(
     """Extract structured data from all markdown files in directory."""
     markdown_files = find_files(directory, {".md"}, recursive=True, path_filter=path_filter)
     results = {}
-    
+
     for markdown_path in markdown_files:
         logger.info(f"Processing file: {markdown_path}")
         json_path = markdown_path.with_suffix('.json')
-        
+
         if skip_existing and json_path.exists():
             logger.info(f"Skipping existing file: {markdown_path}")
             results[str(markdown_path)] = "skipped"
             continue
-        
+
         try:
             extract_from_file(markdown_path, response_model, **extractor_kwargs)
             logger.info(f"Successfully extracted from file: {markdown_path}")
@@ -85,7 +85,7 @@ def extract_dir(
         except Exception as e:
             logger.error(f"Error extracting from file {markdown_path}: {str(e)}")
             results[str(markdown_path)] = f"error: {str(e)}"
-    
+
     return results
 
 

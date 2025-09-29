@@ -107,16 +107,20 @@ def extract_from_text(
     text: str,
     response_model: Type[T],
     provider: str = "ollama/llama3.2",
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    custom_prompt: Optional[str] = None
 ) -> T:
     """Extract structured data from text using instructor with evidence tracking."""
     client = instructor.from_provider(provider, **({} if api_key is None else {"api_key": api_key}))
-    
-    prompt = (
-        f"Extract structured data from this document. "
-        f"For each field, provide exact quoted evidence and confidence 0-1.\n\n{text}"
-    )
-    
+
+    if custom_prompt:
+        prompt = f"{custom_prompt}\n\n{text}"
+    else:
+        prompt = (
+            f"Extract structured data from this document. "
+            f"For each field, provide exact quoted evidence and confidence 0-1.\n\n{text}"
+        )
+
     return client.chat.completions.create(
         response_model=response_model,
         messages=[{"role": "user", "content": prompt}],
@@ -130,18 +134,19 @@ def extract_from_file(
     response_model: Type[T],
     provider: str = "ollama/llama3.2",
     api_key: Optional[str] = None,
-    save_json: bool = True
+    save_json: bool = True,
+    custom_prompt: Optional[str] = None
 ) -> T:
     """Extract structured data from a single markdown file."""
     file_path = Path(file_path)
     text = file_path.read_text(encoding='utf-8')
-    
-    result = extract_from_text(text, response_model, provider, api_key)
-    
+
+    result = extract_from_text(text, response_model, provider, api_key, custom_prompt)
+
     if save_json:
         json_path = file_path.with_suffix('.json')
         _save_result(result, json_path)
-    
+
     return result
 
 
@@ -183,15 +188,19 @@ def extract_from_files(
 
 
 def _save_result(result: BaseModel, json_path: Path):
-    """Save extraction result to JSON with evidence."""
+    """Save extraction result to JSON with evidence tracking when available."""
     data = {}
-    
+
     for field_name, field_value in result.__dict__.items():
+        # Handle WithEvidence types (legacy)
         if field_value and hasattr(field_value, 'value') and field_value.value is not None:
             data[field_name] = {
                 'value': field_value.value,
                 'evidence': field_value.evidence,
                 'confidence': field_value.confidence
             }
-    
+        # Handle simple types (string, int, float, lists, etc.)
+        elif field_value is not None:
+            data[field_name] = field_value
+
     json_path.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding='utf-8')
