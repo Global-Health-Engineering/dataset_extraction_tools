@@ -4,11 +4,14 @@ Combines evidence models and extraction logic in a single focused module.
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Union, Optional, TypeVar, Type, List, Any
 from datetime import date
 from pydantic import BaseModel, Field, create_model
 from .utils import timing
+
+logger = logging.getLogger(__name__)
 
 try:
     import instructor
@@ -169,24 +172,47 @@ def extract_from_text(
     response_model: Type[T],
     provider: str = "ollama/llama3.2",
     api_key: Optional[str] = None,
-    custom_prompt: Optional[str] = None
+    custom_prompt: Optional[str] = None,
+    use_evidence: bool = True,
+    auto_fallback: bool = True
 ) -> T:
-    """Extract structured data from text using instructor with evidence tracking."""
+    """
+    Extract structured data from text with evidence tracking and auto-fallback.
+
+    Args:
+        use_evidence: Whether to use evidence tracking (WithEvidence fields)
+        auto_fallback: If True, automatically retry with simplified schema on failure
+    """
     client = instructor.from_provider(provider, **({} if api_key is None else {"api_key": api_key}))
 
-    if custom_prompt:
-        prompt = f"{custom_prompt}\n\n{text}"
-    else:
-        prompt = (
-            f"Extract structured data from this document. "
-            f"For each field, provide exact quoted evidence and confidence 0-1.\n\n{text}"
-        )
+    # Generate schema-driven prompt if no custom prompt provided
+    if custom_prompt is None:
+        custom_prompt = generate_extraction_prompt(response_model, use_evidence)
 
-    return client.chat.completions.create(
-        response_model=response_model,
-        messages=[{"role": "user", "content": prompt}],
-        max_retries=2
-    )
+    prompt = f"{custom_prompt}\n\nDOCUMENT TEXT:\n{text}"
+
+    try:
+        # First attempt with original schema
+        return client.chat.completions.create(
+            response_model=response_model,
+            messages=[{"role": "user", "content": prompt}],
+            max_retries=2
+        )
+    except Exception as e:
+        if auto_fallback and use_evidence:
+            # Fallback: try with simplified schema (no evidence)
+            logger.warning(f"Evidence extraction failed, falling back to simple extraction: {e}")
+            simple_schema = create_simple_schema(response_model)
+            simple_prompt = generate_extraction_prompt(simple_schema, use_evidence=False)
+            fallback_prompt = f"{simple_prompt}\n\nDOCUMENT TEXT:\n{text}"
+
+            return client.chat.completions.create(
+                response_model=simple_schema,
+                messages=[{"role": "user", "content": fallback_prompt}],
+                max_retries=2
+            )
+        else:
+            raise e
 
 
 @timing
@@ -196,13 +222,13 @@ def extract_from_file(
     provider: str = "ollama/llama3.2",
     api_key: Optional[str] = None,
     save_json: bool = True,
-    custom_prompt: Optional[str] = None
+    **kwargs
 ) -> T:
-    """Extract structured data from a single markdown file."""
+    """Extract structured data from a single markdown file with evidence tracking and auto-fallback."""
     file_path = Path(file_path)
     text = file_path.read_text(encoding='utf-8')
 
-    result = extract_from_text(text, response_model, provider, api_key, custom_prompt)
+    result = extract_from_text(text, response_model, provider, api_key, **kwargs)
 
     if save_json:
         json_path = file_path.with_suffix('.json')
@@ -216,7 +242,8 @@ def extract_from_files(
     response_model: Type[T],
     provider: str = "ollama/llama3.2",
     api_key: Optional[str] = None,
-    save_json: bool = True
+    save_json: bool = True,
+    **kwargs
 ) -> T:
     """Extract structured data from multiple files in a single LLM call."""
     if not file_paths:
@@ -238,7 +265,7 @@ def extract_from_files(
     
     # Single LLM call with combined content
     full_content = "\n\n".join(combined_content)
-    result = extract_from_text(full_content, response_model, provider, api_key)
+    result = extract_from_text(full_content, response_model, provider, api_key, **kwargs)
     
     # Save to first file's directory
     if save_json and valid_paths:
