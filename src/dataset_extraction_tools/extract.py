@@ -49,6 +49,67 @@ class DateWithEvidence(WithEvidence):
 class EnumWithEvidence(WithEvidence):
     value: Optional[str] = None
 
+def create_simple_schema(response_model: Type[T]) -> Type[BaseModel]:
+    """
+    Create a simplified version of schema without evidence tracking.
+    Converts WithEvidence fields to their simple counterparts.
+    """
+    field_definitions = {}
+
+    for field_name, field_info in response_model.__annotations__.items():
+        if hasattr(response_model, '__fields__'):
+            field_desc = response_model.__fields__[field_name].field_info.description
+
+            # Convert evidence types to simple types
+            if field_info == StringWithEvidence:
+                field_definitions[field_name] = (Optional[str], Field(description=field_desc))
+            elif field_info == IntWithEvidence:
+                field_definitions[field_name] = (Optional[int], Field(description=field_desc))
+            elif field_info == FloatWithEvidence:
+                field_definitions[field_name] = (Optional[float], Field(description=field_desc))
+            elif field_info == DateWithEvidence:
+                field_definitions[field_name] = (Optional[date], Field(description=field_desc))
+            else:
+                # Keep other types as-is
+                field_definitions[field_name] = (field_info, Field(description=field_desc))
+
+    # Create simplified model
+    SimpleModel = create_model(
+        f"{response_model.__name__}_Simple",
+        **field_definitions
+    )
+
+    return SimpleModel
+
+
+def generate_extraction_prompt(schema: Type[BaseModel], use_evidence: bool = True) -> str:
+    """Generate extraction prompt from schema field descriptions."""
+    fields_desc = []
+    for field_name, field_info in schema.__annotations__.items():
+        if hasattr(schema, '__fields__'):
+            field_desc = schema.__fields__[field_name].field_info.description
+            fields_desc.append(f"- {field_name}: {field_desc}")
+
+    base_prompt = f"""Extract the following information from this document:
+
+{chr(10).join(fields_desc)}
+
+CRITICAL REQUIREMENTS:
+- Extract ONLY text that appears verbatim in the document
+- Do not infer, estimate, or add any information not explicitly stated"""
+
+    if use_evidence:
+        base_prompt += """
+- Provide exact quotes as evidence for each field
+- Include confidence score between 0.0 and 1.0
+- Use confidence 0.0 if information is not found"""
+    else:
+        base_prompt += """
+- Return null/empty for fields not found in the document"""
+
+    return base_prompt
+
+
 def schema_from_json(json_path: str, schema_name = None) -> Type[BaseModel]:
     """
     Generate Pydantic model from simple JSON field definitions.
