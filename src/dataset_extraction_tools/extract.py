@@ -59,22 +59,38 @@ def create_simple_schema(response_model: Type[T]) -> Type[BaseModel]:
     """
     field_definitions = {}
 
-    for field_name, field_info in response_model.__annotations__.items():
-        if hasattr(response_model, '__fields__'):
-            field_desc = response_model.__fields__[field_name].field_info.description
+    # Use model_fields for Pydantic v2 compatibility
+    if hasattr(response_model, 'model_fields'):
+        fields = response_model.model_fields
+    elif hasattr(response_model, '__fields__'):
+        fields = response_model.__fields__
+    else:
+        fields = {}
 
-            # Convert evidence types to simple types
-            if field_info == StringWithEvidence:
-                field_definitions[field_name] = (Optional[str], Field(description=field_desc))
-            elif field_info == IntWithEvidence:
-                field_definitions[field_name] = (Optional[int], Field(description=field_desc))
-            elif field_info == FloatWithEvidence:
-                field_definitions[field_name] = (Optional[float], Field(description=field_desc))
-            elif field_info == DateWithEvidence:
-                field_definitions[field_name] = (Optional[date], Field(description=field_desc))
-            else:
-                # Keep other types as-is
-                field_definitions[field_name] = (field_info, Field(description=field_desc))
+    for field_name, field_obj in fields.items():
+        # Extract description from field
+        if hasattr(field_obj, 'description') and field_obj.description:
+            field_desc = field_obj.description
+        elif hasattr(field_obj, 'field_info') and hasattr(field_obj.field_info, 'description'):
+            field_desc = field_obj.field_info.description
+        else:
+            field_desc = f"Field: {field_name}"
+
+        # Get the field type from annotations
+        field_info = response_model.__annotations__.get(field_name, str)
+
+        # Convert evidence types to simple types
+        if field_info == StringWithEvidence:
+            field_definitions[field_name] = (Optional[str], Field(description=field_desc))
+        elif field_info == IntWithEvidence:
+            field_definitions[field_name] = (Optional[int], Field(description=field_desc))
+        elif field_info == FloatWithEvidence:
+            field_definitions[field_name] = (Optional[float], Field(description=field_desc))
+        elif field_info == DateWithEvidence:
+            field_definitions[field_name] = (Optional[date], Field(description=field_desc))
+        else:
+            # Keep other types as-is
+            field_definitions[field_name] = (field_info, Field(description=field_desc))
 
     # Create simplified model
     SimpleModel = create_model(
@@ -88,10 +104,24 @@ def create_simple_schema(response_model: Type[T]) -> Type[BaseModel]:
 def generate_extraction_prompt(schema: Type[BaseModel], use_evidence: bool = True) -> str:
     """Generate extraction prompt from schema field descriptions."""
     fields_desc = []
-    for field_name, field_info in schema.__annotations__.items():
-        if hasattr(schema, '__fields__'):
-            field_desc = schema.__fields__[field_name].field_info.description
-            fields_desc.append(f"- {field_name}: {field_desc}")
+
+    # Use model_fields for Pydantic v2 compatibility
+    if hasattr(schema, 'model_fields'):
+        fields = schema.model_fields
+    elif hasattr(schema, '__fields__'):
+        fields = schema.__fields__
+    else:
+        fields = {}
+
+    for field_name, field_obj in fields.items():
+        # Extract description from field
+        if hasattr(field_obj, 'description') and field_obj.description:
+            field_desc = field_obj.description
+        elif hasattr(field_obj, 'field_info') and hasattr(field_obj.field_info, 'description'):
+            field_desc = field_obj.field_info.description
+        else:
+            field_desc = f"Field: {field_name}"
+        fields_desc.append(f"- {field_name}: {field_desc}")
 
     base_prompt = f"""Extract the following information from this document:
 
@@ -174,7 +204,8 @@ def extract_from_text(
     api_key: Optional[str] = None,
     custom_prompt: Optional[str] = None,
     use_evidence: bool = True,
-    auto_fallback: bool = True
+    auto_fallback: bool = True,
+    mode: Optional[str] = None
 ) -> T:
     """
     Extract structured data from text with evidence tracking and auto-fallback.
@@ -182,8 +213,12 @@ def extract_from_text(
     Args:
         use_evidence: Whether to use evidence tracking (WithEvidence fields)
         auto_fallback: If True, automatically retry with simplified schema on failure
+        mode: Instructor mode (e.g., instructor.Mode.TOOLS for tool calling)
     """
-    client = instructor.from_provider(provider, **({} if api_key is None else {"api_key": api_key}))
+    client_kwargs = {} if api_key is None else {"api_key": api_key}
+    if mode is not None:
+        client_kwargs["mode"] = mode
+    client = instructor.from_provider(provider, **client_kwargs)
 
     # Generate schema-driven prompt if no custom prompt provided
     if custom_prompt is None:
@@ -275,20 +310,46 @@ def extract_from_files(
     return result
 
 
+def _serialize_value(value):
+    """Recursively serialize a value, handling BaseModel objects and WithEvidence types."""
+    # Handle None values
+    if value is None:
+        return None
+
+    # Handle WithEvidence types
+    if hasattr(value, 'value') and hasattr(value, 'evidence') and hasattr(value, 'confidence'):
+        return {
+            'value': _serialize_value(value.value),
+            'evidence': value.evidence,
+            'confidence': value.confidence
+        }
+
+    # Handle BaseModel objects (like ORDProjectItem)
+    if isinstance(value, BaseModel):
+        serialized = {}
+        for field_name, field_value in value.__dict__.items():
+            if not field_name.startswith('_'):  # Skip private fields
+                serialized[field_name] = _serialize_value(field_value)
+        return serialized
+
+    # Handle lists
+    if isinstance(value, list):
+        return [_serialize_value(item) for item in value]
+
+    # Handle dictionaries
+    if isinstance(value, dict):
+        return {k: _serialize_value(v) for k, v in value.items()}
+
+    # Handle primitive types
+    return value
+
+
 def _save_result(result: BaseModel, json_path: Path):
     """Save extraction result to JSON with evidence tracking when available."""
     data = {}
 
     for field_name, field_value in result.__dict__.items():
-        # Handle WithEvidence types (legacy)
-        if field_value and hasattr(field_value, 'value') and field_value.value is not None:
-            data[field_name] = {
-                'value': field_value.value,
-                'evidence': field_value.evidence,
-                'confidence': field_value.confidence
-            }
-        # Handle simple types (string, int, float, lists, etc.)
-        elif field_value is not None:
-            data[field_name] = field_value
+        if not field_name.startswith('_'):  # Skip private fields like _raw_response
+            data[field_name] = _serialize_value(field_value)
 
     json_path.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding='utf-8')
