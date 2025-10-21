@@ -25,20 +25,27 @@ try:
 except ImportError:
     MARKER_AVAILABLE = False
 
+try:
+    from docling.document_converter import DocumentConverter
+    DOCLING_AVAILABLE = True
+except ImportError:
+    DOCLING_AVAILABLE = False
+
 _EXTENSIONS_NOT_SUPPORTED_BY_PANDOC = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
 @timing
-def convert_to_markdown(file_path: Union[str, Path], use_marker: bool = False, **converter_kwargs) -> str:
+def convert_to_markdown(file_path: Union[str, Path], use_marker: bool = False, use_docling: bool = False, **converter_kwargs) -> str:
     """
-    Convert document to markdown using Pandoc first, Marker fallback.
-    
+    Convert document to markdown using Pandoc first, Marker/Docling fallback.
+
     Args:
         file_path: Path to document file
         use_marker: Force usage of Marker instead of Pandoc
-        
+        use_docling: Force usage of Docling instead of Pandoc
+
     Returns:
         Markdown content as string
-        
+
     Raises:
         FileNotFoundError: If file doesn't exist
         RuntimeError: If conversion fails
@@ -49,7 +56,11 @@ def convert_to_markdown(file_path: Union[str, Path], use_marker: bool = False, *
         raise FileNotFoundError(f"File not found: {file_path}")
     
     file_ext = file_path.suffix.lower()
-    
+
+    # Force Docling usage if requested
+    if use_docling:
+        return _convert_with_docling(file_path, **converter_kwargs)
+
     # Force Marker usage if requested
     if use_marker:
         return _convert_with_marker(file_path, **converter_kwargs)
@@ -107,3 +118,21 @@ def _convert_with_marker(file_path: Path, **kwargs) -> str:
         raise RuntimeError("Marker conversion failed")
     
     return rendered.markdown
+
+
+def _convert_with_docling(file_path: Path, **kwargs) -> str:
+    """Convert using Docling."""
+    if not DOCLING_AVAILABLE:
+        raise RuntimeError("docling not available. Install with: pip install docling")
+
+    # Initialize DocumentConverter with any provided kwargs
+    # Docling supports various format options and pipeline configurations
+    converter = DocumentConverter(**kwargs)
+
+    # Convert document
+    result = converter.convert(str(file_path))
+
+    if not result or not hasattr(result, 'document'):
+        raise RuntimeError("Docling conversion failed")
+
+    return result.document.export_to_markdown()
